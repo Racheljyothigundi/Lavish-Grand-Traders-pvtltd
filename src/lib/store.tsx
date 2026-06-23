@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 
 /* ------------------------------ Auth ------------------------------ */
 export interface User {
@@ -202,24 +201,24 @@ export function StoreProviders({ children }: { children: ReactNode }) {
         return {};
       },
       signInWithGoogle: async () => {
-        if (typeof window === "undefined") {
+        const redirectTo = getAuthCallbackUrl();
+        if (!redirectTo || typeof window === "undefined") {
           return { error: "Google sign-in is only available in the browser." };
         }
 
-        const redirectTo = getAuthCallbackUrl();
-
-        const result = await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: redirectTo,
-          extraParams: { prompt: "select_account" },
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo,
+            queryParams: { prompt: "select_account" },
+            skipBrowserRedirect: true,
+          },
         });
 
-        if (result.redirected) return {};
-        if (result.error) {
-          return { error: result.error instanceof Error ? result.error.message : String(result.error) };
-        }
+        if (error) return { error: error.message };
+        if (!data?.url) return { error: "Unable to start Google sign-in. Please try again." };
 
-        // Session was set via supabase.auth.setSession — redirect to account
-        window.location.assign(redirectTo ?? "/account?tab=dashboard");
+        window.location.assign(data.url);
         return {};
       },
       resetPassword: async (email) => {
