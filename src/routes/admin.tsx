@@ -63,6 +63,16 @@ function Admin() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const lowStock = products.filter((p) => p.stock < 70);
+  const today = new Date().toDateString();
+  const ordersToday = orders.filter((order) => new Date(order.created_at).toDateString() === today).length;
+  const revenue = orders
+    .filter((order) => !["cancelled", "refunded"].includes(order.status))
+    .reduce((sum, order) => sum + Number(order.total_amount), 0);
+  const activeCustomers = useMemo(
+    () => new Set(orders.map((order) => `${order.shipping_phone}-${order.shipping_name}`)).size,
+    [orders],
+  );
 
   useEffect(() => {
     if (user?.role !== "admin") return;
@@ -122,17 +132,6 @@ function Admin() {
         <Button asChild className="mt-6 bg-brand text-brand-foreground"><Link to="/">Back to Home</Link></Button>
       </section>
     </SiteLayout>
-  );
-
-  const lowStock = products.filter((p) => p.stock < 70);
-  const today = new Date().toDateString();
-  const ordersToday = orders.filter((order) => new Date(order.created_at).toDateString() === today).length;
-  const revenue = orders
-    .filter((order) => !["cancelled", "refunded"].includes(order.status))
-    .reduce((sum, order) => sum + Number(order.total_amount), 0);
-  const activeCustomers = useMemo(
-    () => new Set(orders.map((order) => `${order.shipping_phone}-${order.shipping_name}`)).size,
-    [orders],
   );
 
   async function updateOrderStatus(order: AdminOrder, status: OrderStatus) {
