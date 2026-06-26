@@ -1,1 +1,0 @@
-function e(e){return e<=0?0:e<499?99:e<=999?49:0}function t(e,t){let n=e.trim().toLowerCase(),r=t.trim().toLowerCase();return n===`hyderabad`?50:r.includes(`andhra`)?90:70}function n(e){return e<=0||e>999?0:1e3-e}export{e as n,n as r,t};
