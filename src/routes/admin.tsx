@@ -14,10 +14,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TrendingUp, ShoppingBag, Users, Package, AlertTriangle, BarChart3, ShieldAlert, ArrowUpRight, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Banknote,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  Loader2,
+  Package,
+  RotateCcw,
+  ShieldAlert,
+  ShieldCheck,
+  ShoppingBag,
+  Truck,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
-type Tab = "overview" | "orders" | "inventory" | "customers" | "reports";
+type Tab = "overview" | "orders" | "payments" | "inventory" | "customers" | "reports";
 type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
 type AdminOrder = {
   id: string;
@@ -34,7 +52,10 @@ type AdminOrder = {
   status: OrderStatus;
   payment_method: string;
   payment_status: string;
+  payment_id?: string | null;
   created_at: string;
+  updated_at?: string;
+  confirmed_at?: string | null;
   items?: Array<{ id: string; item_name: string; quantity: number; unit_price?: number; total_price: number }>;
 };
 
@@ -172,6 +193,7 @@ function Admin() {
           <TabsList className="bg-secondary mb-6 flex-wrap">
             <TabsTrigger value="overview" asChild><Link to="/admin" search={{ tab: "overview" }}>Overview</Link></TabsTrigger>
             <TabsTrigger value="orders" asChild><Link to="/admin" search={{ tab: "orders" }}>Orders</Link></TabsTrigger>
+            <TabsTrigger value="payments" asChild><Link to="/admin" search={{ tab: "payments" }}>Payments</Link></TabsTrigger>
             <TabsTrigger value="inventory" asChild><Link to="/admin" search={{ tab: "inventory" }}>Inventory</Link></TabsTrigger>
             <TabsTrigger value="customers" asChild><Link to="/admin" search={{ tab: "customers" }}>Customers</Link></TabsTrigger>
             <TabsTrigger value="reports" asChild><Link to="/admin" search={{ tab: "reports" }}>Reports</Link></TabsTrigger>
@@ -284,6 +306,39 @@ function Admin() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <div className="rounded-2xl border border-border bg-white shadow-soft overflow-hidden">
+              <div className="grid grid-cols-2 bg-slate-50 border-b border-border text-sm font-semibold text-brand-deep">
+                <div className="px-5 py-4">Order Summary</div>
+                <div className="px-5 py-4 border-l border-border">Payment Details</div>
+              </div>
+              <div className="p-3 sm:p-5 space-y-4">
+                {loadingOrders && (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                    Loading payments
+                  </div>
+                )}
+                {!loadingOrders && orders.map((order) => (
+                  <PaymentSummaryCard
+                    key={order.id}
+                    order={order}
+                    onDetails={() => setSelectedOrder(order)}
+                  />
+                ))}
+                {!loadingOrders && orders.length === 0 && (
+                  <div className="py-12 text-center text-muted-foreground">No payments yet.</div>
+                )}
+              </div>
+              <div className="border-t border-border bg-slate-50 px-5 py-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
+                <span><i className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-2" />Paid — order confirmed</span>
+                <span><i className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2" />Failed — payment unsuccessful</span>
+                <span><i className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-2" />COD — pay on delivery</span>
+                <span><i className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-2" />Pending — awaiting payment</span>
+              </div>
             </div>
           </TabsContent>
 
@@ -400,5 +455,185 @@ function Admin() {
         </DialogContent>
       </Dialog>
     </SiteLayout>
+  );
+}
+
+type PaymentDisplayState = "paid" | "failed" | "cod" | "refunded" | "pending";
+
+function PaymentSummaryCard({
+  order,
+  onDetails,
+}: {
+  order: AdminOrder;
+  onDetails: () => void;
+}) {
+  const state: PaymentDisplayState =
+    order.payment_status === "refunded" || order.status === "refunded"
+      ? "refunded"
+      : order.payment_method === "cod"
+        ? "cod"
+        : order.payment_status === "completed"
+          ? "paid"
+          : order.payment_status === "failed"
+            ? "failed"
+            : "pending";
+
+  const appearance = {
+    paid: {
+      label: "PAID",
+      summary: "Payment Successful",
+      detail: "Payment Completed",
+      note: "Payment secured by Razorpay",
+      border: "border-l-emerald-500",
+      iconBg: "bg-emerald-50",
+      text: "text-emerald-600",
+      soft: "bg-emerald-50",
+      Icon: CheckCircle2,
+    },
+    failed: {
+      label: "FAILED",
+      summary: "Payment Failed",
+      detail: "Payment Failed",
+      note: "Payment could not be completed",
+      border: "border-l-red-500",
+      iconBg: "bg-red-50",
+      text: "text-red-600",
+      soft: "bg-red-50",
+      Icon: XCircle,
+    },
+    cod: {
+      label: "COD",
+      summary: "Cash on Delivery",
+      detail: "Payment Pending",
+      note: "Pay when the order is delivered",
+      border: "border-l-amber-500",
+      iconBg: "bg-amber-50",
+      text: "text-amber-600",
+      soft: "bg-amber-50",
+      Icon: Package,
+    },
+    refunded: {
+      label: "REFUNDED",
+      summary: "Payment Refunded",
+      detail: "Refund Completed",
+      note: "Payment returned to customer",
+      border: "border-l-violet-500",
+      iconBg: "bg-violet-50",
+      text: "text-violet-600",
+      soft: "bg-violet-50",
+      Icon: RotateCcw,
+    },
+    pending: {
+      label: "PENDING",
+      summary: "Awaiting Payment",
+      detail: "Payment Processing",
+      note: "Waiting for payment confirmation",
+      border: "border-l-blue-500",
+      iconBg: "bg-blue-50",
+      text: "text-blue-600",
+      soft: "bg-blue-50",
+      Icon: Clock3,
+    },
+  }[state];
+
+  const paymentProvider =
+    order.payment_method === "cod"
+      ? "Cash on Delivery"
+      : order.payment_method === "bank_transfer"
+        ? "Bank Transfer"
+        : "Razorpay";
+  const PaymentIcon =
+    order.payment_method === "cod"
+      ? Banknote
+      : order.payment_method === "bank_transfer"
+        ? CreditCard
+        : CreditCard;
+  const paymentDate = order.confirmed_at || order.updated_at || order.created_at;
+  const refundText =
+    state === "refunded"
+      ? "Refunded"
+      : order.status === "cancelled"
+        ? "Review needed"
+        : "No Refund";
+
+  return (
+    <article className={`rounded-2xl border border-border border-l-4 ${appearance.border} bg-white shadow-sm overflow-hidden`}>
+      <div className="grid md:grid-cols-[1.15fr_0.85fr]">
+        <div className="p-5 md:p-6">
+          <div className="flex items-start gap-4">
+            <div className={`w-12 h-12 shrink-0 rounded-full ${appearance.iconBg} ${appearance.text} flex items-center justify-center`}>
+              <appearance.Icon className="w-7 h-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="font-display text-2xl font-bold text-brand-deep">
+                    {inr(Number(order.total_amount))}
+                  </div>
+                  <span className={`inline-flex mt-1 rounded-md px-2 py-1 text-xs font-semibold ${appearance.soft} ${appearance.text}`}>
+                    {appearance.summary}
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={onDetails}>View order</Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {order.order_number} · Placed {new Date(order.created_at).toLocaleString("en-IN")}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 border-t border-border pt-4 space-y-2 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground flex items-center gap-2"><ShoppingBag className="w-4 h-4" />Subtotal</span>
+              <span className="font-semibold">{inr(Number(order.subtotal))}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground flex items-center gap-2"><Truck className="w-4 h-4" />Delivery Charges</span>
+              <span className="font-semibold">{Number(order.shipping_cost) ? inr(Number(order.shipping_cost)) : "Free"}</span>
+            </div>
+            <div className={`flex justify-between rounded-lg px-3 py-2 font-bold ${appearance.soft} ${appearance.text}`}>
+              <span>{state === "paid" ? "Total Paid" : "Total Amount"}</span>
+              <span>{inr(Number(order.total_amount))}</span>
+            </div>
+            <p className={`flex items-center gap-2 pt-1 text-xs ${appearance.text}`}>
+              <ShieldCheck className="w-4 h-4" />
+              {appearance.note}
+            </p>
+          </div>
+        </div>
+
+        <div className="border-t md:border-t-0 md:border-l border-border p-5 md:p-6">
+          <span className={`inline-flex rounded-md px-3 py-1 text-xs font-bold ${appearance.soft} ${appearance.text}`}>
+            {appearance.label}
+          </span>
+          <div className="mt-4 flex items-center gap-2 font-semibold text-brand-deep">
+            <PaymentIcon className={`w-5 h-5 ${appearance.text}`} />
+            {paymentProvider}
+          </div>
+          <div className={`mt-4 flex items-center gap-2 text-sm font-semibold ${appearance.text}`}>
+            <appearance.Icon className="w-4 h-4" />
+            {appearance.detail}
+          </div>
+          <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+            <CalendarDays className="w-4 h-4" />
+            {new Date(paymentDate).toLocaleString("en-IN")}
+          </div>
+          {order.payment_id && (
+            <div className="mt-3 text-xs text-muted-foreground break-all">
+              Payment ID: <span className="font-mono">{order.payment_id}</span>
+            </div>
+          )}
+          <div className="mt-5 border-t border-border pt-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <RotateCcw className="w-4 h-4" />
+              Refund Status
+            </div>
+            <div className={`mt-1 text-sm font-semibold ${state === "refunded" ? "text-violet-600" : appearance.text}`}>
+              {refundText}
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
