@@ -53,10 +53,11 @@ function friendlyAuthError(error: string) {
 
 export function AuthDialog() {
   const { open, setOpen } = useAuthModal();
-  const { login, signup, signInWithGoogle, resetPassword } = useAuth();
+  const { login, signup, resendConfirmation, signInWithGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState<Mode>("login");
   const [pendingAction, setPendingAction] = useState<"form" | "google" | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState("");
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -72,6 +73,7 @@ export function AuthDialog() {
     setOpen(false);
     setMode("login");
     setPendingAction(null);
+    setConfirmationEmail("");
     setForm({ name: "", email: "", phone: "", password: "", confirmPassword: "" });
   };
 
@@ -102,6 +104,9 @@ export function AuthDialog() {
       }
       const { error } = await login(form.email.trim().toLowerCase(), form.password);
       if (error) {
+        if (error.toLowerCase().includes("email not confirmed")) {
+          setConfirmationEmail(form.email.trim().toLowerCase());
+        }
         toast.error(friendlyAuthError(error));
         setPendingAction(null);
       } else {
@@ -129,7 +134,7 @@ export function AuthDialog() {
         setPendingAction(null);
         return;
       }
-      const { error } = await signup({
+      const { error, needsConfirmation } = await signup({
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim() || undefined,
@@ -137,6 +142,11 @@ export function AuthDialog() {
       });
       if (error) {
         toast.error(friendlyAuthError(error));
+        setPendingAction(null);
+      } else if (needsConfirmation) {
+        setConfirmationEmail(form.email.trim().toLowerCase());
+        setMode("login");
+        setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
         setPendingAction(null);
       } else {
         close();
@@ -209,6 +219,23 @@ export function AuthDialog() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
+            {mode === "login" && confirmationEmail && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p>Confirm {confirmationEmail} before signing in.</p>
+                <button
+                  type="button"
+                  className="mt-1 font-semibold text-brand hover:underline"
+                  onClick={async () => {
+                    setPendingAction("form");
+                    const { error } = await resendConfirmation(confirmationEmail);
+                    if (error) toast.error(friendlyAuthError(error));
+                    setPendingAction(null);
+                  }}
+                >
+                  Resend confirmation email
+                </button>
+              </div>
+            )}
             {mode === "signup" && (
               <div className="space-y-1.5">
                 <Label>Full name *</Label>

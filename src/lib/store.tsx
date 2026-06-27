@@ -21,7 +21,8 @@ interface AuthCtx {
     email: string;
     phone?: string;
     password: string;
-  }) => Promise<{ error?: string }>;
+  }) => Promise<{ error?: string; needsConfirmation?: boolean }>;
+  resendConfirmation: (email: string) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
@@ -166,6 +167,12 @@ export function StoreProviders({ children }: { children: ReactNode }) {
         role,
       });
       setLoading(false);
+
+      if (role === "customer") {
+        void supabase.functions.invoke("send-welcome-email").then(({ error }) => {
+          if (error) console.error("[Auth] Welcome email notification failed", error);
+        });
+      }
     }
 
     supabase.auth.getSession().then(({ data }) => loadUser(data.session?.user ?? null));
@@ -200,7 +207,7 @@ export function StoreProviders({ children }: { children: ReactNode }) {
         return {};
       },
       signup: async ({ name, email, phone, password }) => {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -209,7 +216,21 @@ export function StoreProviders({ children }: { children: ReactNode }) {
           },
         });
         if (error) return { error: error.message };
-        toast.success("Account created — check your email to confirm.");
+        if (!data.session) {
+          toast.success("Account created — check your email to confirm it before signing in.");
+          return { needsConfirmation: true };
+        }
+        toast.success("Account created and signed in successfully.");
+        return {};
+      },
+      resendConfirmation: async (email) => {
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: getAuthCallbackUrl() },
+        });
+        if (error) return { error: error.message };
+        toast.success("Confirmation email sent. Please check your inbox and spam folder.");
         return {};
       },
       signInWithGoogle: async () => {
