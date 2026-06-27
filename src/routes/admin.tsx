@@ -29,6 +29,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   ShoppingBag,
+  TrendingUp,
   Truck,
   Users,
   XCircle,
@@ -62,6 +63,7 @@ type AdminOrder = {
 export const Route = createFileRoute("/admin")({
   validateSearch: (s): { tab: Tab } => ({ tab: (s.tab as Tab) || "overview" }),
   head: () => ({ meta: [{ title: "Admin Console — Lavish Grand Traders" }] }),
+  errorComponent: AdminErrorPage,
   component: Admin,
 });
 
@@ -75,6 +77,75 @@ const statusLabels: Record<OrderStatus, string> = {
   cancelled: "Cancelled",
   refunded: "Refunded",
 };
+
+function normalizeAdminOrder(value: unknown): AdminOrder {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  const validStatus = orderStatuses.includes(raw.status as OrderStatus)
+    ? (raw.status as OrderStatus)
+    : "pending";
+
+  return {
+    id: String(raw.id ?? ""),
+    order_number: String(raw.order_number ?? "Pending order number"),
+    shipping_name: String(raw.shipping_name ?? "Customer"),
+    shipping_phone: String(raw.shipping_phone ?? "Not provided"),
+    shipping_address_line1: String(raw.shipping_address_line1 ?? "Not provided"),
+    shipping_city: String(raw.shipping_city ?? ""),
+    shipping_pincode: String(raw.shipping_pincode ?? ""),
+    notes: typeof raw.notes === "string" ? raw.notes : null,
+    total_amount: Number(raw.total_amount) || 0,
+    subtotal: Number(raw.subtotal) || 0,
+    shipping_cost: Number(raw.shipping_cost) || 0,
+    status: validStatus,
+    payment_method: String(raw.payment_method ?? "unknown"),
+    payment_status: String(raw.payment_status ?? "pending"),
+    payment_id: typeof raw.payment_id === "string" ? raw.payment_id : null,
+    created_at: typeof raw.created_at === "string" ? raw.created_at : new Date(0).toISOString(),
+    updated_at: typeof raw.updated_at === "string" ? raw.updated_at : undefined,
+    confirmed_at: typeof raw.confirmed_at === "string" ? raw.confirmed_at : null,
+    items: Array.isArray(raw.items)
+      ? raw.items
+          .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+          .map((item, index) => ({
+            id: String(item.id ?? `${raw.id ?? "order"}-item-${index}`),
+            item_name: String(item.item_name ?? "Order item"),
+            quantity: Number(item.quantity) || 0,
+            unit_price: Number(item.unit_price) || 0,
+            total_price: Number(item.total_price) || 0,
+          }))
+      : [],
+  };
+}
+
+function AdminErrorPage({ reset }: { reset: () => void }) {
+  return (
+    <SiteLayout>
+      <section className="max-w-lg mx-auto container-px py-24 text-center">
+        <AlertTriangle className="w-12 h-12 mx-auto text-amber-500" />
+        <h1 className="font-display text-3xl font-bold text-brand-deep mt-4">
+          Admin dashboard needs a refresh
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Your order data is safe. Reload the latest dashboard files to continue.
+        </p>
+        <div className="mt-6 flex justify-center gap-3">
+          <Button
+            className="bg-gradient-hero text-white"
+            onClick={() => {
+              reset();
+              window.location.reload();
+            }}
+          >
+            Reload dashboard
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/">Go home</Link>
+          </Button>
+        </div>
+      </section>
+    </SiteLayout>
+  );
+}
 
 function Admin() {
   const { tab } = Route.useSearch();
@@ -111,7 +182,7 @@ function Admin() {
         console.error("[Admin] Failed to load orders", error);
         toast.error("Could not load orders");
       } else {
-        setOrders((data ?? []) as AdminOrder[]);
+        setOrders((data ?? []).map(normalizeAdminOrder));
       }
       setLoadingOrders(false);
     }

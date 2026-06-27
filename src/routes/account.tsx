@@ -95,7 +95,7 @@ function Account() {
       if (error) {
         console.error("[Account] Failed to load orders", error);
       } else {
-        setOrders((data ?? []) as CustomerOrder[]);
+        setOrders((data ?? []) as unknown as CustomerOrder[]);
       }
       setOrdersLoading(false);
     }
