@@ -78,6 +78,50 @@ const statusLabels: Record<OrderStatus, string> = {
   refunded: "Refunded",
 };
 
+function getPaymentDisplayState(order: AdminOrder): PaymentDisplayState {
+  if (order.payment_status === "refunded" || order.status === "refunded") return "refunded";
+  if (order.payment_method === "cod") return "cod";
+  if (order.payment_status === "completed") return "paid";
+  if (order.payment_status === "failed") return "failed";
+  return "pending";
+}
+
+const paymentColours: Record<
+  PaymentDisplayState,
+  { row: string; badge: string; amount: string; dot: string }
+> = {
+  paid: {
+    row: "border-l-4 border-l-emerald-500 hover:bg-emerald-50/40",
+    badge: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    amount: "text-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  failed: {
+    row: "border-l-4 border-l-red-500 hover:bg-red-50/40",
+    badge: "bg-red-100 text-red-700 border-red-200",
+    amount: "text-red-700",
+    dot: "bg-red-500",
+  },
+  cod: {
+    row: "border-l-4 border-l-amber-500 hover:bg-amber-50/40",
+    badge: "bg-amber-100 text-amber-700 border-amber-200",
+    amount: "text-amber-700",
+    dot: "bg-amber-500",
+  },
+  refunded: {
+    row: "border-l-4 border-l-violet-500 hover:bg-violet-50/40",
+    badge: "bg-violet-100 text-violet-700 border-violet-200",
+    amount: "text-violet-700",
+    dot: "bg-violet-500",
+  },
+  pending: {
+    row: "border-l-4 border-l-blue-500 hover:bg-blue-50/40",
+    badge: "bg-blue-100 text-blue-700 border-blue-200",
+    amount: "text-blue-700",
+    dot: "bg-blue-500",
+  },
+};
+
 function normalizeAdminOrder(value: unknown): AdminOrder {
   const raw = (value ?? {}) as Record<string, unknown>;
   const validStatus = orderStatuses.includes(raw.status as OrderStatus)
@@ -314,15 +358,15 @@ function Admin() {
           </TabsContent>
 
           <TabsContent value="orders">
-            <div className="bg-white border border-border rounded-2xl overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-white border border-border rounded-2xl overflow-x-auto shadow-soft">
+              <table className="w-full min-w-[980px] text-sm">
                 <thead className="bg-secondary text-brand-deep"><tr>{["Order ID","Customer","Items","Total","Payment","Status",""].map((h) => <th key={h} className="text-left p-4 font-semibold">{h}</th>)}</tr></thead>
                 <tbody className="[&_tr]:border-t [&_tr]:border-border">
                   {loadingOrders && (
                     <tr><td colSpan={7} className="p-8 text-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />Loading orders</td></tr>
                   )}
                   {!loadingOrders && orders.map((o) => (
-                    <tr key={o.id}>
+                    <tr key={o.id} className={`transition-colors ${paymentColours[getPaymentDisplayState(o)].row}`}>
                       <td className="p-4 font-mono text-brand">{o.order_number}<div className="text-xs text-muted-foreground font-sans">{new Date(o.created_at).toLocaleDateString("en-IN")}</div></td>
                       <td className="p-4">
                         <div className="font-semibold">{o.shipping_name}</div>
@@ -341,14 +385,20 @@ function Admin() {
                           {!o.items?.length && <div className="text-xs text-muted-foreground">No item details saved yet.</div>}
                         </div>
                       </td>
-                      <td className="p-4 font-semibold">
-                        {inr(Number(o.total_amount))}
+                      <td className={`p-4 font-semibold ${paymentColours[getPaymentDisplayState(o)].amount}`}>
+                        <div className="text-lg font-bold">{inr(Number(o.total_amount))}</div>
                         <div className="text-xs text-muted-foreground">Subtotal {inr(Number(o.subtotal))}</div>
                         <div className="text-xs text-muted-foreground">Delivery {o.shipping_cost ? inr(Number(o.shipping_cost)) : "Free"}</div>
                       </td>
                       <td className="p-4 capitalize">
-                        {o.payment_method}
-                        <div className="text-xs text-muted-foreground">{o.payment_status}</div>
+                        <div className="flex items-center gap-2 font-semibold text-brand-deep">
+                          {o.payment_method === "cod" ? <Banknote className="w-4 h-4 text-amber-600" /> : <CreditCard className="w-4 h-4 text-blue-600" />}
+                          {o.payment_method === "cod" ? "Cash on Delivery" : o.payment_method === "bank_transfer" ? "Bank Transfer" : "Razorpay"}
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 mt-2 rounded-full border px-2.5 py-1 text-xs font-bold uppercase ${paymentColours[getPaymentDisplayState(o)].badge}`}>
+                          <i className={`w-2 h-2 rounded-full ${paymentColours[getPaymentDisplayState(o)].dot}`} />
+                          {getPaymentDisplayState(o)}
+                        </span>
                         <div className="text-xs text-muted-foreground">
                           Refund: {o.status === "refunded" ? "Refunded" : o.status === "cancelled" ? "Review needed" : "No refund"}
                         </div>
@@ -538,16 +588,7 @@ function PaymentSummaryCard({
   order: AdminOrder;
   onDetails: () => void;
 }) {
-  const state: PaymentDisplayState =
-    order.payment_status === "refunded" || order.status === "refunded"
-      ? "refunded"
-      : order.payment_method === "cod"
-        ? "cod"
-        : order.payment_status === "completed"
-          ? "paid"
-          : order.payment_status === "failed"
-            ? "failed"
-            : "pending";
+  const state = getPaymentDisplayState(order);
 
   const appearance = {
     paid: {
