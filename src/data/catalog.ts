@@ -160,10 +160,10 @@ export interface SubscriptionPlan {
 }
 
 export const subscriptionPlans: SubscriptionPlan[] = [
-  { id: "s1", name: "Family Pack",         blurb: "Daily nutrition for the whole family",      monthly: 1499, includes: ["500g Almonds", "500g Cashews", "250g Raisins", "250g Walnuts"], badge: "Popular" },
+  { id: "s1", name: "Family Pack",         blurb: "Daily nutrition for the whole family",      monthly: 1499, includes: ["250g Almonds", "250g Cashews", "250g Raisins", "250g Sunflower Seeds", "250g Pumpkin Seeds"], badge: "Popular" },
   { id: "s2", name: "Fitness Pack",        blurb: "High-protein fuel for active lifestyles",   monthly: 1799, includes: ["500g Almonds", "500g Pistachios", "250g Pumpkin Seeds", "250g Sunflower Seeds"] },
-  { id: "s3", name: "Kids Nutrition Pack", blurb: "Brain-boosting snacks for little ones",     monthly: 1199, includes: ["500g Cashews", "250g Walnuts", "250g Raisins", "250g Dates"] },
-  { id: "s4", name: "Executive Health",    blurb: "Premium curation for busy professionals",   monthly: 2499, includes: ["500g Premium Cashews", "500g Pistachios", "500g Walnuts", "250g Anjeer"], badge: "Premium" },
+  { id: "s3", name: "Kids Nutrition Pack", blurb: "Brain-boosting snacks for little ones",     monthly: 1199, includes: ["100g Cashews", "100g Walnuts", "100g Almonds", "100g Pistachios", "100g Pumpkin Seeds", "100g Sunflower Seeds"] },
+  { id: "s4", name: "Executive Health",    blurb: "Premium curation for busy professionals",   monthly: 2499, includes: ["250g Almonds", "250g Cashews", "250g Walnuts", "250g Pistachios", "250g Anjeer", "250g Raisins", "250g Sunflower Seeds", "250g Pumpkin Seeds"], badge: "Premium" },
 ];
 
 export const festivalCollections = [
